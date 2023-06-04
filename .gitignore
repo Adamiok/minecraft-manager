@@ -1,7 +1,12 @@
 ### Ansible ###
 *.retry
-
 setup/rules
+
+### Public & Private keys ###
+*.key
+*.ppk
+*.pem
+*.pub
 
 ### Windows ###
 *.lnk
