@@ -14,8 +14,10 @@ override_dir: "{{ ansible_env.HOME }}/overrides/"
 service_dir: /srv/minecraft/
 
 # MC version file, should be present in each dirrectory where the "papermc" update service is used
-# This file should contain a complete minecraft release version (not snapshot), as shown in the minecraft launcher, eg.
-# 1.19.4
+# This file should contain the project version you want to download, this depends on the software
+# To find the version number, go to https://papermc.io/downloads and select the project you want to autoupdate. The version is showned on the download button
+# For paper you would use: 1.19.4
+# However for velocity you would use: 3.2.0-SNAPSHOT
 mc_version_file: target.mcversion
 
 # User to run the server screen under
