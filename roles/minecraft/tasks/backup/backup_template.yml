@@ -1,0 +1,27 @@
+- name: Manage backups
+  block:
+    - name: Check if service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_running
+      changed_when: false
+      failed_when:
+        - screen_running.rc != 0
+        - screen_running.stdout != "No screen session found."
+    
+    - name: Modify backups
+      block:
+        - name: Get current running service
+          ansible.builtin.slurp:
+            src: "{{ [service_dir, last_run_service_file] | path_join }}"
+          register: running_service
+        
+        - name: Run backup.sh
+          ansible.builtin.command:
+            cmd: "./backup.sh {{ backup_cmd }}"
+            chdir: "{{ running_service.content | b64decode }}"
+          register: backup_result
+        
+      when: screen_running.rc == 0
+  
+  become: true
+  become_user: "{{ user }}"

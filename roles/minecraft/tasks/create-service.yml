@@ -1,0 +1,43 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "Some (or all) of the required variables (template, service_name) are not set"
+  when: ((template | default('') | length) == 0) or ((service_name | default('') | length) == 0)
+
+- name: Check that template and service_name are valid
+  ansible.builtin.fail:
+    msg: "The template or service_name can't contain a slash (/) or a dot (.)"
+  when: (new_template | default('')) is regex('\.|\/') or (new_name | default('')) is regex('\.|\/')
+
+- name: Check that template exist
+  ansible.builtin.fail:
+    msg: The template "{{ template }}" does not exist
+  when: not sources.0 is directory
+
+- name: Get information of the remote service
+  ansible.builtin.find:
+    paths: "{{ service_dir }}"
+    file_type: directory
+    patterns: "*.{{ service_name }}"
+    follow: true
+  register: service_info
+
+- name: Check that the service does not exist
+  ansible.builtin.fail:
+    msg: The service "{{ service_name }}" already exists on the remote machine
+  when: service_info.files | length > 0
+
+- name: Create service directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ remote_path }}"
+  become: true
+  become_user: "{{ user }}"
+
+- ansible.builtin.import_tasks: push/combine.yml
+- ansible.builtin.import_tasks: push/synchronize.yml
+
+- name: Cleanup
+  ansible.builtin.file:
+    path: "{{ tmp_dir }}"
+    state: absent
+  changed_when: false

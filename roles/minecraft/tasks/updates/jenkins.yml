@@ -1,0 +1,28 @@
+# AUTOUPDATE_COMMENT_jenkins_ci.citizensnpcs.co_Citizens2_123.jar
+- name: Get latest stable build
+  ansible.builtin.uri:
+    url: "https://{{ file_project }}/job/{{ file_version }}/lastStableBuild/api/json?tree=artifacts%5BrelativePath%5D,id"
+    headers:
+      accept: application/json
+  register: stable_build
+
+- name: Check that a build is avilable
+  ansible.builtin.fail:
+    msg: There is no stable jenkins build for {{ file_project }}/job/{{ file_version }}
+  when: (stable_build.json is not defined) or stable_build.json == {}
+
+- name: Update to the latest stable build
+  block:
+  - name: Download latest stable build
+    ansible.builtin.get_url:
+      url: "https://{{ file_project }}/job/{{ file_version }}/lastStableBuild/artifact/{{ stable_build.json.artifacts.0.relativePath }}"
+      dest: "{{ new_file }}"
+      headers:
+        accept: application/octet-stream
+      force: true
+  
+  - ansible.builtin.include_tasks: updates/actions/delete.yml
+  
+  when: (build_id | string) != file_build
+  vars:
+    build_id: "{{ stable_build.json.id }}"

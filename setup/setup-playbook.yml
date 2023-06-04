@@ -1,0 +1,190 @@
+---
+
+- hosts: localhost
+  gather_facts: no
+  
+  vars_prompt:
+    - name: _hosts
+      prompt: On which remotes do you want to install dependencies (please use hosts/groups from your inventory file)
+      private: no
+  
+  tasks:
+    - set_fact:
+        user_provided_hosts: "{{ _hosts }}"
+
+
+- name: INSTALL ALL NECESSARY DEPENDENCIES
+  hosts: "{{ hostvars.localhost.user_provided_hosts }}"
+  become: true
+  vars_prompt:
+    - name: acl
+      prompt: Install acl (you should install this unless if you a different way to become an unprivileged user)? [Yes/No]
+      private: false
+      default: true
+    
+    - name: user
+      prompt: Create a SYSTEM user, under which this role will run, you will be unable to login to it. If you choose a name different to the default, you will need to pass it with every call to this role, as the variable "user". Write 'nobody' to not create a user
+      private: false
+      default: minecraft
+    
+    - name: iptables_path
+      prompt: File path to use as iptables configuration. Leave blank to keep current.
+      private: false
+      default: ""
+    
+    
+  tasks:
+    - name: Install acl
+      ansible.builtin.apt:
+        name: acl
+        state: present
+        update_cache: true
+        autoclean: true
+        autoremove: true
+      when: acl | bool
+    
+    - name: Install necessary packages
+      ansible.builtin.apt:
+        name:
+          - openjdk-17-jre
+          - openjdk-8-jre
+          - screen
+          - findutils
+          - rsync
+          - zip
+          - unzip
+        state: present
+        update_cache: true
+        autoclean: true
+        autoremove: true
+    
+    - name: Install necessary packages on host
+      ansible.builtin.apt:
+        name:
+          - rsync
+          - findutils
+        state: present
+        update_cache: true
+        autoclean: true
+        autoremove: true
+      delegate_to: localhost
+      run_once: true
+    
+    - name: Create user
+      ansible.builtin.user:
+        name: "{{ user }}"
+        system: true
+        create_home: false
+        home: /nonexistent # For correct entry in /etc/passwd
+        password: ! # Password disabled
+        shell: /usr/sbin/nologin
+      when: user != "nobody"
+    
+    - name: Update iptables
+      block:
+        - name: Store old iptables file
+          ansible.builtin.copy:
+            src: "{{ iptables_rules }}"
+            dest: "{{ tmp_path }}"
+            remote_src: true
+            follow: true
+            force: true
+        
+        - name: Copy iptables file
+          ansible.builtin.copy:
+            src: "{{ iptables_path }}"
+            dest: "{{ iptables_rules }}"
+        
+        - name: Add recovery script file
+          ansible.builtin.copy:
+            dest: "{{ recovery_script }}"
+            content: |
+              #!/bin/bash
+              set -e
+              cp -rf -- "{{ tmp_path }}" "{{ iptables_rules }}"
+              rm -f -- "{{ recovery_timer }}" "{{ recovery_service }}" "{{ recovery_script }}" "{{ tmp_path }}"
+              systemctl reboot -i
+            follow: true
+            owner: root
+            group: root
+            mode: 0777
+        
+        - name: Add recovery service unit
+          ansible.builtin.copy:
+            dest: "{{ recovery_service }}"
+            content: |
+              [Unit]
+              Description=Iptables recovery by minecraft ansible manager
+              
+              [Service]
+              Type=oneshot
+              ExecStart={{ recovery_script }}
+            follow: true
+            owner: root
+            group: root
+            mode: 0644
+        
+        - name: Add recovery timer
+          ansible.builtin.copy:
+            dest: "{{ recovery_timer }}"
+            content: |
+              [Unit]
+              Description=Recovers iptables configuration
+              
+              [Timer]
+              Unit=iptables-recovery.service
+              OnStartupSec=6min
+              
+              [Install]
+              WantedBy=timers.target
+            follow: true
+            owner: root
+            group: root
+            mode: 0644
+        
+        - name: Enable recovery timer
+          ansible.builtin.systemd:
+            name: "{{ recovery_timer | basename }}"
+            enabled: true
+            daemon_reload: true
+        
+        - name: Disable recovery service
+          ansible.builtin.systemd:
+            name: "{{ recovery_service | basename }}"
+            enabled: false
+        
+        - name: Reboot
+          ansible.builtin.reboot:
+            reboot_timeout: 300
+          register: reboot
+          ignore_errors: true
+        
+        - name: Display important information
+          ansible.builtin.fail:
+            msg: "IMPORTANT: The iptables configuration has been changed. However, after rebooting the system, ansible was unable to establish a connection (with a timeout of 300 seconds). Please check if you can connect through SSH or other administration tools. As a last remote chance of recovery, a systemd entry has been added, which will revert the iptables configuration changes and reboot the system. This entry will run 6 minutes (about right now) after system boot."
+          when:
+            - reboot is failed
+        
+        - name: Remove recovery files
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - "{{ recovery_timer }}"
+            - "{{ recovery_service }}"
+            - "{{ recovery_script }}"
+            - "{{ tmp_path }}"
+        
+        - name: Reload systemd deamon
+          ansible.builtin.systemd:
+            daemon_reload: true
+        
+      vars:
+        recovery_script: /var/tmp/minecraft-manager-iptables-recovery_script.sh
+        recovery_timer: /etc/systemd/system/iptables-recovery.timer
+        recovery_service: /etc/systemd/system/iptables-recovery.service
+        
+        iptables_rules: /etc/iptables/rules.v4
+        tmp_path: /var/tmp/minecraft-ansible-manager-SETUP_iptables.v4 # Do NOT use /tmp, it will get wiped on reboot
+      when: iptables_path | length != 0
+      become: true

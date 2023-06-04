@@ -1,0 +1,37 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (backup_name) is not set"
+  when: (backup_name | default('') | length) == 0
+
+- name: Restore backup
+  block:
+    - name: Check if service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_running
+      changed_when: false
+      failed_when:
+        - screen_running.rc != 0
+        - screen_running.stdout != "No screen session found."
+  
+    - name: Modify backups
+      block:
+        - name: Get current running service
+          ansible.builtin.slurp:
+            src: "{{ [service_dir, last_run_service_file] | path_join }}"
+          register: running_service
+        
+        - ansible.builtin.import_tasks: stop-service.yml
+        
+        - name: Run backup.sh
+          ansible.builtin.command:
+            cmd: "./backup.sh restore {{ backup_name }}"
+            chdir: "{{ running_service.content | b64decode }}"
+        
+        - ansible.builtin.import_tasks: start-service.yml
+          vars:
+            service_name: "{{ (running_service.content | b64decode | relpath(service_dir) | split('.')).1 }}"
+        
+      when: screen_running.rc == 0
+  
+  become: true
+  become_user: "{{ user }}"

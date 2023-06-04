@@ -1,0 +1,29 @@
+- name: Push files
+  ansible.posix.synchronize:
+    archive: false
+    recursive: true
+    perms: true
+    copy_links: true
+    checksum: true
+    verify_host: true
+    src: "{{ rsync_path }}"
+    dest: "{{ remote_path }}"
+    rsync_opts:
+      - "--exclude=.*"
+  become: true
+  become_user: "{{ user }}"
+  vars:
+    rsync_path: "{{ [tmp_dict[dir_name], '.'] | path_join }}"
+
+- name: Delete files
+  ansible.builtin.file:
+    path: "{{ [remote_path, file] | path_join }}"
+    state: absent
+  loop: "{{ ((lookup('file', delete_files.0) | split('\n')) if (delete_files.0 is file) else []) + ((lookup('file', delete_files.1) | split('\n')) if (delete_files.1 is file) else []) | unique }}"
+  loop_control:
+    label: "{{ file }}"
+    loop_var: file
+  vars:
+    delete_files: "{{ sources | zip([delete_file, delete_file]) | map('path_join') }}"
+  become: true
+  become_user: "{{ user }}"

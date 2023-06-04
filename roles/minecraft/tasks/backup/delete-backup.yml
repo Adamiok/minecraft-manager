@@ -1,0 +1,8 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (backup_name) is not set"
+  when: (backup_name | default('') | length) == 0
+
+- ansible.builtin.import_tasks: backup/backup_template.yml
+  vars:
+    backup_cmd: "delete {{ backup_name }}"

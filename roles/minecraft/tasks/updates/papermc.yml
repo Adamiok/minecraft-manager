@@ -1,0 +1,30 @@
+# Example: AUTOUPDATE_COMMENT_papermc_paper_1.19.4_126.jar
+- name: Get available versions
+  ansible.builtin.uri:
+    url: "https://api.papermc.io/v2/projects/{{ file_project }}/versions/{{ target_mc_version }}/builds"
+    headers:
+      accept: application/json
+  register: builds
+
+- name: Check that builds are available
+  ansible.builtin.fail:
+    msg: "There are no stable papermc builds for {{ target_mc_version }}"
+  when: (builds.json.builds | length) == 0 or (builds_default | length) == 0
+
+- name: Update to latest version
+  block:
+    - name: Download latest version
+      ansible.builtin.get_url:
+        url: "https://api.papermc.io/v2/projects/{{ file_project }}/versions/{{ target_mc_version }}/builds/{{ build.build }}/downloads/{{ build.download }}"
+        dest: "{{ new_file }}"
+        headers:
+          accept: application/java-archive
+        force: true
+        checksum: "sha256:{{ build.hash }}"
+    
+    - ansible.builtin.include_tasks: updates/actions/delete.yml
+  
+  when: (build_id | string) != file_build # We don't have latest version
+  vars:
+    build: "{{ builds_default | last }}"
+    build_id: "{{ build.build }}"

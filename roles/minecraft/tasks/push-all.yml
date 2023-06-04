@@ -1,0 +1,53 @@
+- name: Get present services
+  ansible.builtin.find:
+    paths: "{{ service_dir }}"
+    file_type: directory
+    follow: true
+  register: services
+
+- ansible.builtin.include_tasks: push/combine.yml
+  vars:
+    template: "{{ (service | split('.')).0 }}"
+    service_name: "{{ (service | split('.')).1 }}"
+  loop: "{{ ansible_play_hosts | map('extract', hostvars, 'services') | map(attribute='files') | flatten | map(attribute='path') | map('relpath', service_dir) }}"
+  loop_control:
+    label: "{{ service }}"
+    loop_var: service
+  run_once: true
+
+- ansible.builtin.include_tasks: push/synchronize.yml
+  vars:
+    template: "{{ (item | split('.')).0 }}"
+    service_name: "{{ (item | split('.')).1 }}"
+  when: sources.0 is directory
+  loop: "{{ services.files | map(attribute='path') | map('relpath', service_dir) }}"
+
+- name: Cleanup
+  block:
+    - name: Remove tmp dir
+      ansible.builtin.file:
+        path: "{{ tmp_dir }}"
+        state: absent
+      changed_when: false
+    
+    - name: Find all delete files
+      ansible.builtin.find:
+        paths:
+          - "{{ template_dir }}"
+          - "{{ override_dir }}"
+        patterns: "{{ delete_file }}"
+        recurse: true
+        hidden: true
+        follow: true
+      register: delete_files_push
+      
+    - name: Delete delete files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ delete_files_push.files | map(attribute='path') }}"
+      loop_control:
+        label: "{{ item }}"
+    
+  delegate_to: localhost
+  run_once: true

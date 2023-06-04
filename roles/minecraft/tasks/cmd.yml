@@ -1,0 +1,9 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (cmd) is not set"
+  when: (cmd | default('') | length) == 0
+
+- name: Execute command
+  ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X stuff '\\015{{ cmd }}\\015'"
+  become: true
+  become_user: "{{ user }}"

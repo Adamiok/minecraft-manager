@@ -1,0 +1,27 @@
+# AUTOUPDATE_COMMENT_projectkorra_141__123.jar
+
+# ProjectKorra unfortunetly does not have an api, so we need to the workarounds
+# Expect this to break anytime ProjectKorra changes how downloads are handled
+- name: Get latest version
+  ansible.builtin.uri:
+    url: "https://projectkorra.com/forum/resources/root.{{ file_project }}/download"
+    decompress: false
+    headers:
+      accept: application/octet-stream
+  register: version
+
+- name: Update to latest version
+  block:
+    - name: Download latest version
+      ansible.builtin.get_url:
+        url: "https://projectkorra.com/forum/resources/root.{{ file_project }}/download"
+        dest: "{{ new_file }}"
+        headers:
+          accept: application/octet-stream
+        force: true
+    
+    - ansible.builtin.include_tasks: updates/actions/delete.yml
+  
+  when: build_id != file_build
+  vars:
+    build_id: "{{ version.content_length | string }}"

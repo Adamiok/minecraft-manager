@@ -1,0 +1,12 @@
+- name: Delete old version
+  ansible.builtin.file:
+    path: "{{ file }}"
+    state: absent
+
+- name: Add to delete file
+  ansible.builtin.lineinfile:
+    path: "{{ [(file | dirname).startswith(template_dir) | ternary([template_dir, (rel_path | split('/')).0] | path_join, [override_dir, (rel_path | split('/')).0] | path_join), delete_file] | path_join }}"
+    line: "{{ (rel_path | split('/'))[1:] | join('/') }}"
+    create: true
+  vars:
+    rel_path: "{{ ((file | dirname).startswith(template_dir)) | ternary([file | dirname | relpath(template_dir), file | basename] | path_join, [file | dirname | relpath(override_dir), file | basename] | path_join) }}"

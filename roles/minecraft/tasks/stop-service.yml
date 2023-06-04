@@ -1,0 +1,21 @@
+- name: Stop service
+  block:
+    - name: Stop existing screen session
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X stuff '\\015stop\\015'"
+      register: screen_stop
+      changed_when: screen_stop.rc == 0
+      failed_when:
+        - screen_stop.rc != 0
+        - screen_stop.stdout != "No screen session found."
+  
+    - name: Wait for service shutdown
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_wait
+      retries: 40 # 2 minutes for server to shutdown, then report as failed
+      delay: 3
+      until: screen_wait is not failed
+      changed_when: false
+      failed_when: screen_wait.rc == 0
+  
+  become: true
+  become_user: "{{ user }}"

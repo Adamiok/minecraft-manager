@@ -1,0 +1,68 @@
+- name: Update apt packages
+  ansible.builtin.apt:
+    upgrade: safe
+    autoremove: true
+    update_cache: true
+  become: true
+
+- name: Check if kernel was updated
+  ansible.builtin.stat:
+    path: /var/run/reboot-required
+    get_checksum: false
+    get_mime: false
+    get_attributes: false
+  register: reboot_file
+
+- name: Restart servers for kernal updates
+  block:
+    - name: Get if any service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: running
+      changed_when: false
+      failed_when:
+        - running.rc != 0
+        - running.stdout != "No screen session found."
+    
+    - ansible.builtin.import_tasks: stop-service.yml
+    
+    - name: Restart system
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      become: true
+    
+    - name: (Re)start service
+      block:
+      - name: Get service path
+        ansible.builtin.slurp:
+          src: "{{ [service_dir, last_run_service_file] | path_join }}"
+        register: stopped_service
+    
+      - name: Start service
+        ansible.builtin.command:
+          cmd: "screen -dmq -S {{ screen_name }} ./start.sh"
+          chdir: "{{ stopped_service.content | b64decode }}"
+      
+      become: true
+      become_user: "{{ user }}"
+      when: running.rc == 0
+    
+  when: reboot_file.stat.exists
+
+- name: Update local files
+  block:
+    - name: Find all autoupdate jars
+      ansible.builtin.find:
+        follow: true
+        recurse: true
+        paths: "{{ [template_dir, override_dir] }}"
+        patterns: AUTOUPDATE_*.jar
+      register: files
+    
+    - ansible.builtin.include_tasks: "updates/{{ file_service }}.yml"
+      loop: "{{ files.files | map(attribute='path') }}"
+      loop_control:
+        label: "{{ file }}"
+        loop_var: file
+    
+  delegate_to: localhost
+  run_once: true

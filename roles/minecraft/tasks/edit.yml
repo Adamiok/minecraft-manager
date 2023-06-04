@@ -1,0 +1,123 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (service_name) is not set"
+  when: (service_name | default('') | length) == 0
+
+- name: Check that template and service_name are valid
+  ansible.builtin.fail:
+    msg: "The template or service_name can't contain a slash (/) or a dot (.)"
+  when: (new_template | default('')) is regex('\.|\/') or (new_name | default('')) is regex('\.|\/')
+
+- name: Edit service
+  block:
+    - name: Get service
+      ansible.builtin.find:
+        paths: "{{ service_dir }}"
+        file_type: directory
+        patterns: "*.{{ service_name }}"
+        follow: true
+      register: current_service
+    
+    - name: Check that service exists
+      ansible.builtin.fail:
+        msg: "The service ({{ service_name }}) does not exist on the remote"
+      when: (current_service.files | length) < 1
+    
+    - name: Check that template exist
+      ansible.builtin.fail:
+        msg: The template "{{ new_template }}" does not exist
+      when: not ([template_dir, new_template] | path_join) is directory
+    
+    - name: Get if any service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_running
+      changed_when: false
+      failed_when:
+        - screen_running.rc != 0
+        - screen_running.stdout != "No screen session found."
+  
+    - name: Is the current service running
+      block:
+        - name: Get the current running service
+          ansible.builtin.slurp:
+            src: "{{ [service_dir, last_run_service_file] | path_join }}"
+          register: last_run
+  
+        - name: Check if the current service is not running
+          ansible.builtin.fail:
+            msg: The service ({{ service_name }}) is currently running. Stop it and then try again
+          when: (last_run.content | b64decode) == current_service.files.0.path
+        
+      when: screen_running.rc == 0
+    
+    - name: Get services with new name
+      ansible.builtin.find:
+        paths: "{{ service_dir }}"
+        file_type: directory
+        patterns: "*.{{ new_name }}"
+        follow: true
+      register: unique_check
+    
+    - name: Check that new service name is unique
+      ansible.builtin.fail:
+        msg: "The name ({{ new_name }}) is already in use"
+      when:
+        - (unique_check.files | length) > 0
+        - new_name != old_array.1
+    
+    - name: Check and replace name
+      block:
+        - name: Find old override files
+          ansible.builtin.find:
+            paths: "{{ override_path }}"
+            recurse: true
+            follow: true
+          register: override_files
+          delegate_to: localhost
+          become: false
+
+        - name: Delete old override files
+          ansible.builtin.file:
+            path: "{{ [current_service.files.0.path, item] | path_join }}"
+            state: absent
+          loop: "{{ override_files.files | map(attribute='path') | map('relpath', override_path) }}"
+      vars:
+        override_path: "{{ [override_dir, old_array.1] | path_join }}"
+      when:
+        - new_name != (old_array.1)
+        - override_path is directory
+    
+    - name: Replace template files
+      block:
+        - name: Find old template files
+          ansible.builtin.find:
+            paths: "{{ template_path }}"
+            recurse: true
+            follow: true
+          register: template_files
+          delegate_to: localhost
+          become: false
+        
+        - name: Delete old template files
+          ansible.builtin.file:
+            path: "{{ [current_service.files.0.path, item] | path_join }}"
+            state: absent
+          loop: "{{ template_files.files | map(attribute='path') | map('relpath', template_path) }}"
+      
+      vars:
+        template_path: "{{ [template_dir, old_array.0] | path_join + '/' }}"
+      when:
+        - new_template != (old_array.0)
+        - template_path is directory
+    
+    - name: Move service
+      ansible.builtin.shell:
+        cmd: "mv '{{ current_service.files.0.path }}' '{{ new_dir }}'"
+        chdir: "{{ service_dir }}"
+        creates: "{{ [service_dir, new_template + '.' + new_name] | path_join }}"
+    
+  become: true
+  become_user: "{{ user }}"
+  vars:
+    old_array: "{{ current_service.files.0.path | relpath(service_dir) | split('.') }}"
+    new_dir: "{{ new_template }}.{{ new_name }}"

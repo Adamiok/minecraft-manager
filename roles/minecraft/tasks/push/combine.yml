@@ -1,0 +1,63 @@
+- block:
+  - name: Check that targeted template exists
+    ansible.builtin.fail:
+      msg: "The template {{ sources.0 }} does not exist (or is not a directory)."
+    when: not sources.0 is directory
+    ignore_errors: true
+  
+  - name: Combine templates and overrides, then push
+    block:
+      - name: Find directories
+        ansible.builtin.shell:
+          chdir: "{{ item }}"
+          cmd: "find * -type d" # We have to use `cd` to not show the path, only file name
+        loop: "{{ sources }}"
+        register: dirs
+        changed_when: false
+        failed_when:
+          - dirs.rc != 0
+          - (not dirs.stderr is search('No such file or directory', ignorecase=true)) or (dirs.stderr_lines | length) > 1
+      
+      - name: Find files
+        ansible.builtin.shell:
+          chdir: "{{ item }}"
+          cmd: find * -type f
+        loop: "{{ sources }}"
+        register: files_out
+        changed_when: false
+        failed_when:
+          - files_out.rc != 0
+          - (not files_out.stderr is search('No such file or directory', ignorecase=true)) or (files_out.stderr_lines | length) > 1
+      
+      - name: Create tmp directories
+        ansible.builtin.file:
+          state: directory
+          path: "{{ [tmp_path, item] | path_join }}"
+        loop: "{{ (dir_list | length != 0) | ternary(dir_list, ['']) }}"
+        vars:
+          dir_list: "{{ dirs.results | map(attribute='stdout_lines') | flatten | unique }}"
+        changed_when: false
+      
+      - name: Populate tmp directory
+        ansible.builtin.file:
+          state: link
+          src: "{{ (item.0.key, item.1) | path_join }}"
+          dest: "{{ (tmp_path, item.1) | path_join }}"
+        loop: "{{ sources | zip([files.0 | difference(files.1), files.1]) | community.general.dict | dict2items | subelements('value') }}"
+        loop_control:
+          label: "{{ item.1 }}"
+        vars:
+          files: "{{ files_out.results | map(attribute='stdout_lines') }}"
+        changed_when: false
+      
+      - ansible.builtin.set_fact:
+          tmp_dict: "{{ tmp_dict | combine( {dir_name: tmp_path} ) }}"
+      
+    when: sources.1 is directory
+  
+  - ansible.builtin.set_fact:
+      tmp_dict: "{{ tmp_dict | combine( {dir_name: sources.0} ) }}"
+    when: not sources.1 is directory
+
+  delegate_to: localhost
+  run_once: true

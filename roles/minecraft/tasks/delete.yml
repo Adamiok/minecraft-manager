@@ -1,0 +1,48 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (service_name) is not set"
+  when: (service_name | default('') | length) == 0
+
+- name: Delete
+  block:
+    - name: Get service
+      ansible.builtin.find:
+        paths: "{{ service_dir }}"
+        file_type: directory
+        patterns: "*.{{ service_name }}"
+        follow: true
+      register: service
+    
+    - name: Check that service exists
+      ansible.builtin.fail:
+        msg: "The service ({{ service_name }}) does not exist on the remote"
+      when: (service.files | length) < 1
+      
+    - name: Get if any service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_running
+      changed_when: false
+      failed_when:
+        - screen_running.rc != 0
+        - screen_running.stdout != "No screen session found."
+    
+    - name: Is the current service running
+      block:
+        - name: Get the current running service
+          ansible.builtin.slurp:
+            src: "{{ [service_dir, last_run_service_file] | path_join }}"
+          register: last_run
+      
+        - name: Check if the current service is not running
+          ansible.builtin.import_tasks: stop-service.yml
+          when: (last_run.content | b64decode) == service.files.0.path
+        
+      when: screen_running.rc == 0
+    
+    - name: Delete service
+      ansible.builtin.file:
+        path: "{{ service.files.0.path }}"
+        state: absent
+  
+  become: true
+  become_user: "{{ user }}"

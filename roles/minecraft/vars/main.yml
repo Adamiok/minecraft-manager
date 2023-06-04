@@ -1,0 +1,28 @@
+# PUSH
+sources:
+  - "{{ [template_dir, template] | path_join }}"
+  - "{{ [override_dir, service_name] | path_join }}"
+tmp_dict: {}
+
+dir_name: "{{ template }}.{{ service_name }}"
+remote_path: "{{ [service_dir, dir_name] | path_join }}"
+tmp_path: "{{ [tmp_dir, dir_name] | path_join }}"
+
+# UPDATE
+file_dir: "{{ file | dirname }}"
+target_mc_version: "{{ lookup('ansible.builtin.file', [file_dir, mc_version_file] | path_join, lstrip='true') }}"
+
+new_file: "{{ [file_dir, 'AUTOUPDATE_' + file_comment + '_' + file_service + '_' + file_project + '_' + file_version + '_' + (build_id | string) + '.jar'] | path_join }}"
+
+file_array: "{{ file | basename | splitext | first | split('_') }}"
+file_comment: "{{ file_array.1 }}"
+file_service: "{{ file_array.2 }}"
+file_project: "{{ file_array.3  }}"
+file_version: "{{ file_array.4 }}"
+file_build: "{{ file_array.5 }}"
+
+# papermc
+builds_default: "{{ builds | community.general.json_query('json.builds[?channel==`default`].{build: build, download: downloads.application.name, hash: downloads.application.sha256}') }}"
+
+# modrinth
+versions_release: "{{ versions.json | community.general.json_query('[?version_type==`release`].{id: id, url: files[?primary==`true`].url, hash: files[?primary==`true`].hashes.sha512}') }}"

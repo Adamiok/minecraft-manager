@@ -1,0 +1,2 @@
+new_template: "{{ (current_service.files.0.path | relpath(service_dir) | split('.')).0 }}"
+new_name: "{{ (current_service.files.0.path | relpath(service_dir) | split('.')).1 }}"

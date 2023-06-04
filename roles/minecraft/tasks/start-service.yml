@@ -1,0 +1,38 @@
+- name: Check that all required variables exist
+  ansible.builtin.fail:
+    msg: "The required variable (service_name) is not set"
+  when: (service_name | default('') | length) == 0
+
+- name: Start service
+  block:
+    - name: Get service template
+      ansible.builtin.find:
+        paths: "{{ service_dir }}"
+        file_type: directory
+        patterns: "*.{{ service_name }}"
+        follow: true
+      register: service_status
+    
+    - name: Check that service exists
+      ansible.builtin.fail:
+        msg: The service "{{ service_name }}" does not exist on the remote
+      when: (service_status.files | length) < 1
+    
+    - ansible.builtin.import_tasks: stop-service.yml
+    
+    - name: Start new service
+      ansible.builtin.command:
+        cmd: "screen -dmq -S {{ screen_name }} ./start.sh"
+        chdir: "{{ service_status.files.0.path }}"
+    
+    - name: Record running service
+      ansible.builtin.template:
+        dest: "{{ [service_dir, last_run_service_file] | path_join }}"
+        src: runningService.j2
+        lstrip_blocks: true
+        follow: true
+        mode: 0664
+      
+  
+  become: true
+  become_user: "{{ user }}"

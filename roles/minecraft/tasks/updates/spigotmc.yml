@@ -1,0 +1,28 @@
+# AUTOUPDATE_COMMENT_spigotmc_845__123.jar
+- name: Get resource information
+  ansible.builtin.uri:
+    url: "https://api.spiget.org/v2/resources/{{ file_project }}"
+    headers:
+      accept: application/json
+  register: resource
+
+- name: Check that the resource can be downloaded
+  ansible.builtin.fail:
+    msg: "The spigotmc resource '{{ file_project }}' is external or has no version to download"
+  when: resource.json.external or (resource.json.versions | length) == 0
+
+- name: Update to latest version
+  block:
+    - name: Download latest version
+      ansible.builtin.get_url:
+        url: "https://api.spiget.org/v2/resources/{{ file_project }}/download"
+        dest: "{{ new_file }}"
+        headers:
+          accept: application/java-archive
+        force: true
+    
+    - ansible.builtin.include_tasks: updates/actions/delete.yml
+  
+  when: (build_id | string) != file_build # We don't have latest version
+  vars:
+    build_id: "{{ resource.json.versions.0.id }}"

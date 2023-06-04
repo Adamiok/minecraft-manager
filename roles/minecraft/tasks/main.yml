@@ -1,0 +1,127 @@
+- name: Gather environment variables
+  ansible.builtin.setup:
+    gather_subset:
+      - "!all"
+      - "!min"
+      - env
+  run_once: true
+  delegate_to: localhost
+  when: ansible_env is not defined
+  tags:
+    - always
+
+- name: Create service directory
+  ansible.builtin.file:
+    state: directory
+    path: "{{ service_dir }}"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+  become: true
+  tags:
+    - always
+
+- name: Create last_run_service_file
+  ansible.builtin.file:
+    state: touch
+    path: "{{ [service_dir, last_run_service_file] | path_join }}"
+    access_time: preserve
+    modification_time: preserve
+  become: true
+  become_user: "{{ user }}"
+
+- name: Remove tmp directory
+  ansible.builtin.file:
+    path: "{{ tmp_dir }}"
+    state: absent
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - always
+
+# Import
+
+- name: Update
+  ansible.builtin.import_tasks: update.yml
+  tags:
+    - update
+
+# Needed vars: template, service_name
+- name: Create service
+  ansible.builtin.import_tasks: create-service.yml
+  tags:
+    - create
+    - never
+
+- name: Push files
+  ansible.builtin.import_tasks: push-all.yml
+  tags:
+    - push
+
+# Needed vars: service_name
+- name: Start service
+  ansible.builtin.import_tasks: start-service.yml
+  tags:
+    - start
+    - never
+
+- name: Stop service
+  ansible.builtin.import_tasks: stop-service.yml
+  tags:
+    - stop
+    - never
+
+# Needed vars: cmd
+- name: Run command
+  ansible.builtin.import_tasks: cmd.yml
+  tags:
+    - execute
+    - never
+
+- name: List services
+  ansible.builtin.import_tasks: list.yml
+  tags:
+    - list
+    - never
+
+# Needed vars: service_name, new_name, new_template
+- name: Edit a service
+  ansible.builtin.import_tasks: edit.yml
+  tags:
+    - edit
+    - never
+
+# Needed vars: service_name
+- name: Delete a service
+  ansible.builtin.import_tasks: delete.yml
+  tags:
+    - delete
+    - never
+
+
+- name: Create backup
+  ansible.builtin.import_tasks: backup/backup_template.yml
+  vars:
+    backup_cmd: "create {{ screen_name }}"
+  tags:
+    - backup-create
+    - never
+
+- name: List backups
+  ansible.builtin.import_tasks: backup/backup_list.yml
+  tags:
+    - backup-list
+    - never
+
+# Needed vars: backup_name
+- name: Delete backup
+  ansible.builtin.import_tasks: backup/delete-backup.yml
+  tags:
+    - backup-delete
+    - never
+
+# Needed vars: backup_name
+- name: Restore backup
+  ansible.builtin.import_tasks: backup/restore-backup.yml
+  tags:
+    - backup-restore
+    - never

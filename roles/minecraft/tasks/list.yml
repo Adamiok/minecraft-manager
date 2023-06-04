@@ -1,0 +1,42 @@
+- name: Get information
+  block:
+    - name: Get all services
+      ansible.builtin.find:
+        paths: "{{ service_dir }}"
+        file_type: directory
+        follow: true
+      register: services
+    
+    - name: Get if any service is running
+      ansible.builtin.command: "screen -p 0 -S {{ screen_name }} -X select ."
+      register: screen_running
+      changed_when: false
+      failed_when:
+        - screen_running.rc != 0
+        - screen_running.stdout != "No screen session found."
+    
+    - name: Get the current running service
+      ansible.builtin.slurp:
+        src: "{{ [service_dir, last_run_service_file] | path_join }}"
+      register: last_run
+      when: screen_running.rc == 0
+  
+  become: true
+  become_user: "{{ user }}"
+
+- name: Change data to human readable format
+  ansible.builtin.set_fact:
+    _i: "{{ service_name }} ({{ template }}){{ current }}"
+  register: services_human
+  loop: "{{ services.files | community.general.json_query('[].path') }}"
+  loop_control:
+    label: "{{ service_name }}"
+  vars:
+    service_array: "{{ item | relpath(service_dir) | split('.') }}"
+    template: "{{ service_array.0 }}"
+    service_name: "{{ service_array.1 }}"
+    current: "{{ ((last_run.content | default('Lgo=') | b64decode | relpath(service_dir) | split('.')).1 == service_name) | ternary(' - running', '') }}" # Hacky way
+
+- name: Print services
+  ansible.builtin.debug:
+    msg: "{{ services_human.results | community.general.json_query('[].ansible_facts._i') | sort }}"

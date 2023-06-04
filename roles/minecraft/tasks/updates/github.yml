@@ -1,0 +1,31 @@
+# AUTOUPDATE_COMMENT_github_Imprex-Development:orebfuscator_orebfuscator-plugin_123.jar
+- name: Get latest release information
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/{{ file_project | replace(':', '/') }}/releases/latest"
+    headers:
+      accept: application/vnd.github+json
+  register: release
+
+- name: Update to latest version
+  block:
+    - name: Check that the specified asset is attached
+      ansible.builtin.fail:
+        msg: "There is no file, which starts with '{{ file_version }}' and ends in .jar, in the latest (stable) release of the github download '{{ file_project | replace(':', '/') }}'"
+      when: (assets | length) == 0
+    
+    - name: Download latest version
+      ansible.builtin.get_url:
+        url: "https://api.github.com/repos/{{ file_project | replace(':', '/') }}/releases/assets/{{ asset_id }}"
+        dest: "{{ new_file }}"
+        headers:
+          accept: application/octet-stream
+        force: true
+      vars:
+        asset_id: "{{ assets.0 }}"
+    
+    - ansible.builtin.include_tasks: updates/actions/delete.yml
+    
+  when: (build_id | string) != file_build
+  vars:
+    assets: "{{ release.json | community.general.json_query('assets[?starts_with(name, `' + file_version + '`) && ends_with(name, `.jar`)].id') }}"
+    build_id: "{{ release.json.id }}"

@@ -1,0 +1,7 @@
+- ansible.builtin.import_tasks: backup/backup_template.yml
+  vars:
+    backup_cmd: "list"
+
+- name: Print backups
+  ansible.builtin.debug:
+    msg: "{{ backup_result.stdout_lines | default('No service is running, start a service to manage backups') }}"

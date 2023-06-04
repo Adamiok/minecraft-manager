@@ -1,0 +1,41 @@
+# DEFAULT CONFIG OPTIONS
+# CHANGE THESE BY SETTING VARIABLES THE SAME NAME AS THESE IN YOUR PLAYBOOK or THE TASK IMPORTING THE ROLE
+
+# Path to a folder where to find template files
+# {{ ansible_env.<VARIABLE> }} can be used to access environment variables
+template_dir: "{{ ansible_env.HOME }}/templates/"
+
+# Path to a folder where to find override files
+# {{ ansible_env.<VARIABLE> }} can be used to access environment variables
+override_dir: "{{ ansible_env.HOME }}/overrides/"
+
+# Where to store service files on the remote
+# Changing this will hide all of your current services, you will need to do manual migration
+service_dir: /srv/minecraft/
+
+# MC version file, should be present in each dirrectory where the "papermc" update service is used
+# This file should contain a complete minecraft release version (not snapshot), as shown in the minecraft launcher, eg.
+# 1.19.4
+mc_version_file: target.mcversion
+
+# User to run the server screen under
+# It is recommended that this user is the owner of the service files, all new uploaded files do this automaticly
+# If you are doing a migration, make sure this user can read/write server files
+user: minecraft
+
+# Screen name to be used
+# Make sure all services are offline before changing this, otherwise you would have to stop them manually
+screen_name: minecraft
+
+# Where to store the last started service on the remote
+# This should be a FILE name, which will be placed the the "service_dir" directory
+# Note: This file may stay even after the service is shutdown, this is intentional
+last_run_service_file: last-run.path
+
+# Filename in which to store files which should be deleted
+# Will be created in each template directory
+delete_file: .delete
+
+# Create a temporary folder at this location, to copy the files to the remote
+# This folder will be deleted after the role runs sucessfuly
+tmp_dir: /tmp/mc-ansible-service-manager/
