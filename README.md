@@ -110,7 +110,7 @@ File name format for different update sources:
 - Bukkit: `AUTOUPDATE_COMMENT_bukkit_pluginName__0.jar`
 - GitHub: `AUTOUPDATE_COMMENT_github_Author:Repo_fileNameToDownloadPrefix_0.jar`
 - Hangar: `AUTOUPDATE_COMMENT_hangar_Author:Name_releasePlatform_0.jar`
-- Jenkins: `AUTOUPDATE_COMMENT_jenkinsUrl_fileNameToDownloadPrefix_0.jar`
+- Jenkins: `AUTOUPDATE_COMMENT_jenkins_jenkinsUrl_fileNameToDownloadPrefix_0.jar`
 - Modrinth: `AUTOUPDATE_COMMENT_modrinth_pluginName_releasePlatform_0.jar`
 - PaperMC: `AUTOUPDATE_COMMENT_papermc_project_mcVersion_0.jar` (For Paper, the target mcVersion must also be set in `target.mcversion` file)
 - ProjectKorra: `AUTOUPDATE_COMMENT_projectkorra_id__0.jar`
