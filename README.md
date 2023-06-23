@@ -44,10 +44,7 @@ When a service is created, it is given two values by the user: the template and 
 To illustrate this, here are some examples:
 
 Let's say we have the following service:
-
-survival (paper)
-swift
-Copy code
+`survival (paper)`
 
 So the name is `survival`, and the template is `paper`.
 
@@ -55,29 +52,30 @@ The directory structure on the control node:
 
 ```
 ~/
-templates/
-paper/
-plugins/
-AwakenLife.jar
-server.jar
-start.sh
-server.properties
-overrides/
-survival/
-plugins/
-Worldguard.jar
-server.properties
+  templates/
+    paper/
+      plugins/
+        AwakenLife.jar
+      server.jar
+      start.sh
+      server.properties
+  overrides/
+    survival/
+      plugins/
+        Worldguard.jar
+      server.properties
 ```
 
 Since the override directory (`overrides/survival`) exists, files from the override will be copied to the service. As a result, the service (on the remote node) will have the following directory structure:
 
 ```
-plugins/
-AwakenLife.jar
-Worldguard.jar
-server.jar
-start.sh
-server.properties (Content of the file will be taken from overrides)
+<service_dir>/
+  plugins/
+    AwakenLife.jar
+    Worldguard.jar
+  server.jar
+  start.sh
+  server.properties (Content of the file will be taken from overrides)
 ```
 
 ### Bash Scripts
