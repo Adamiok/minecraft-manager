@@ -24,7 +24,7 @@
     
     - ansible.builtin.include_tasks: updates/actions/delete.yml
   
-  when: (build_id | string) != file_build # We don't have latest version
+  when: ((build_id | string) != file_build) or (target_mc_version != file_version) # We don't have latest version
   vars:
     build: "{{ builds_default | last }}"
     build_id: "{{ build.build }}"
