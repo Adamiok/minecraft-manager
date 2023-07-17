@@ -131,7 +131,7 @@ while true; do
         printf "Detected non-zero exit code (%s)\n" "$result_code"
         restart || break
     elif [ -f "$restart_flag"  ]; then
-        printf "Server has requested restart\n"
+        printf "Server has requested a restart\n"
         if ! rm "$restart_flag"; then
             # Permissions?
             printf "Error: failed to remove restart flag\n" >&2
