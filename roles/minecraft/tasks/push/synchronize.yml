@@ -13,7 +13,7 @@
   become: true
   become_user: "{{ user }}"
   vars:
-    rsync_path: "{{ [tmp_dict[dir_name], '.'] | path_join }}"
+    rsync_path: "{{ tmp_dict[dir_name] }}/"
 
 - name: Delete files
   ansible.builtin.file:
