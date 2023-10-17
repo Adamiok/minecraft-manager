@@ -12,3 +12,8 @@ setup/rules
 *.lnk
 *.url
 *.cda
+
+### IDE Settings ###
+.vscode
+.idea
+.fleat
