@@ -1,0 +1,30 @@
+# Example: AUTOUPDATE_COMMENT_geysermc_geyser-spigot_2.2.0_410.jar
+- name: Get available versions
+  ansible.builtin.uri:
+    url: "https://download.geysermc.org/v2/projects/{{ file_project | split('-') | first }}"
+    headers:
+      accept: application/json
+  register: versions
+
+- name: Get available builds
+  ansible.builtin.uri:
+    url: "https://download.geysermc.org/v2/projects/{{ file_project | split('-') | first }}/versions/{{ versions.json.versions | last }}"
+    headers:
+      accept: application/json
+  register: builds
+
+- name: Update to latest version
+  block:
+    - name: Download latest version
+      ansible.builtin.get_url:
+        url: "https://download.geysermc.org/v2/projects/{{ file_project | split('-') | first }}/versions/{{ versions.json.versions | last }}/builds/{{ build_id }}/downloads/{{ file_project | split('-') | last }}"
+        dest: "{{ [file_dir, 'AUTOUPDATE_' + file_comment + '_' + file_service + '_' + file_project + '_' + (versions.json.versions | last) + '_' + (build_id | string) + '.jar'] | path_join }}"
+        headers:
+          accept: application/java-archive
+        force: true
+    
+    - ansible.builtin.include_tasks: updates/actions/delete.yml
+  
+  when: ((build_id | string) != file_build) or ((versions.json.versions | last) != file_version) # We don't have latest version
+  vars:
+    build_id: "{{ builds.json.builds | last }}"

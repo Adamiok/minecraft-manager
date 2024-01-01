@@ -111,5 +111,6 @@ File name format for different update sources:
 - Jenkins: `AUTOUPDATE_COMMENT_jenkins_jenkinsUrl_fileNameToDownloadPrefix_0.jar`
 - Modrinth: `AUTOUPDATE_COMMENT_modrinth_pluginName_releasePlatform_0.jar`
 - PaperMC: `AUTOUPDATE_COMMENT_papermc_project_mcVersion_0.jar` (For Paper, the target mcVersion must also be set in `target.mcversion` file)
+- GeyserMC: `AUTOUPDATE_COMMENT_geysermc_project-platform_0_0.jar`
 - ProjectKorra: `AUTOUPDATE_COMMENT_projectkorra_id__0.jar`
 - SpigotMC: `AUTOUPDATE_COMMENT_spigotmc_id__0.jar`
