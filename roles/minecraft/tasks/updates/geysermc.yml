@@ -17,8 +17,8 @@
   block:
     - name: Download latest version
       ansible.builtin.get_url:
-        url: "https://download.geysermc.org/v2/projects/{{ file_project | split('-') | first }}/builds/{{ build_id }}/downloads/{{ file_project | split('-') | last }}"
-        dest: "{{ [file_dir, 'AUTOUPDATE_' + file_comment + '_' + file_service + '_' + file_project + '_' + target_mc_version + '_' + (build_id | string) + '.jar'] | path_join }}"
+        url: "https://download.geysermc.org/v2/projects/{{ file_project | split('-') | first }}/versions/{{ versions.json.versions | last }}/builds/{{ build_id }}/downloads/{{ file_project | split('-') | last }}"
+        dest: "{{ [file_dir, 'AUTOUPDATE_' + file_comment + '_' + file_service + '_' + file_project + '_' + (versions.json.versions | last) + '_' + (build_id | string) + '.jar'] | path_join }}"
         headers:
           accept: application/java-archive
         force: true
