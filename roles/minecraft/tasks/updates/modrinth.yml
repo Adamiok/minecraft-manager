@@ -1,7 +1,7 @@
 # AUTOUPDATE_COMMENT_modrinth_tab-was-taken_paper_123.jar
 - name: Get latest version
   ansible.builtin.uri:
-    url: "https://api.modrinth.com/v2/project/{{ file_project | replace('#', '_') | lower }}/version?loaders=[%22{{ file_version | lower }}%22]"
+    url: "https://api.modrinth.com/v2/project/{{ file_project | replace('#', '_') | lower }}/version?loaders=[%22{{ file_version | lower }}%22]&game_versions=[%22{{ target_mc_version }}%22]"
     headers:
       accept: application/json
   register: versions
