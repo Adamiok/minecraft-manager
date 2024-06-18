@@ -1,17 +1,18 @@
 # AUTOUPDATE_COMMENT_modrinth_tab-was-taken_paper_123.jar
 - name: Get latest version
   ansible.builtin.uri:
-    url: "https://api.modrinth.com/v2/project/{{ file_project | replace('#', '_') | lower }}/version?loaders=[%22{{ file_version | lower }}%22]&game_versions=[%22{{ target_mc_version }}%22]"
+    url: "https://api.modrinth.com/v2/project/{{ file_project | replace('#', '_') | lower }}/version?loaders={{ (file_version is regex('^!')) | ternary('[%22' + (file_version[1:] | lower) + '%22]', '[%22' + (file_version | lower) + '%22]&game_versions=[%22' + target_mc_version + '%22]') }}"
     headers:
       accept: application/json
   register: versions
 
 - name: Check that versions are available
   ansible.builtin.fail:
-    msg: "There are no modrinth release versions for {{ file_project | replace('#', '_') | lower }}, that use the {{ file_version | lower }} loader, and is compatible with {{ target_mc_version }}"
+    msg: "There are no modrinth release versions for {{ file_project | replace('#', '_') | lower }}, that use the {{ file_version | lower }} loader, and are compatible with {{ target_mc_version }}"
   when: (versions.json | length) == 0 or (versions_release | length) == 0
 
 - name: Update to the latest version
+
   block:
     - name: Download latest release
       ansible.builtin.get_url:
