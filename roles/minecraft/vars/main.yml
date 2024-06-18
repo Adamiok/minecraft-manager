@@ -10,7 +10,8 @@ tmp_path: "{{ [tmp_dir, dir_name] | path_join }}"
 
 # UPDATE
 file_dir: "{{ file | dirname }}"
-target_mc_version: "{{ lookup('ansible.builtin.file', [file_dir, mc_version_file] | path_join, lstrip='true') }}"
+file_root_dir: "{{ [template_dir, (file_dir | relpath(template_dir) | split('/') | first)] | path_join }}"
+target_mc_version: "{{ lookup('ansible.builtin.file', [file_root_dir, mc_version_file] | path_join, lstrip='true') }}"
 
 new_file: "{{ [file_dir, 'AUTOUPDATE_' + file_comment + '_' + file_service + '_' + file_project + '_' + file_version + '_' + (build_id | string) + '.jar'] | path_join }}"
 
