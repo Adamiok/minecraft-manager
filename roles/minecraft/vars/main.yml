@@ -24,7 +24,7 @@ file_version: "{{ file_array.4 }}"
 file_build: "{{ file_array.5 }}"
 
 # papermc
-builds_default: "{{ builds | community.general.json_query('json.builds[?channel==`default`].{build: build, download: downloads.application.name, hash: downloads.application.sha256}') }}"
+builds_stable: "{{ builds | community.general.json_query('json[?channel==`STABLE`].{build: id, url: downloads.\"server:default\".url, hash: downloads.\"server:default\".checksums.sha256}') }}"
 
 # modrinth
 versions_release: "{{ versions.json | community.general.json_query('[?version_type==`release`].{id: id, url: files[?primary==`true`].url, hash: files[?primary==`true`].hashes.sha512}') }}"
