@@ -46,6 +46,8 @@
     - name: Install necessary packages
       ansible.builtin.apt:
         name:
+          - openjdk-25-jre
+          - openjdk-21-jre
           - openjdk-17-jre
           - openjdk-8-jre
           - screen
