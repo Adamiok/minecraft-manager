@@ -89,7 +89,13 @@ if [[ "$mc_version" =~ ^(\d+\.\d+|\d+\.\d+\.\d+)$ ]]; then
     printf "Error: server version file (%s) does not contain a valid version\n" "$mc_version_file" >&2
 fi
 
-if [[ $(printf "1.17\n%s" "$mc_version" | sort -V | head -1) == 1.17 ]]; then
+if [[ $(printf "26.1\n%s" "$mc_version" | sort -V | head -1) == 26.1 ]]; then
+    # 26.1+
+    java_version="25"
+elif [[ $(printf "1.20.5\n%s" "$mc_version" | sort -V | head -1) == 1.20.5 ]]; then
+    # 1.20.5+
+    java_version="21"
+elif [[ $(printf "1.17\n%s" "$mc_version" | sort -V | head -1) == 1.17 ]]; then
     # 1.17+
     java_version="17"
 else
